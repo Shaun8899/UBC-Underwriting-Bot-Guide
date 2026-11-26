@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GELM Field Underwriting Triage & Speed-to-Issuance Tool (V102026)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            geRed: '#E31837',
+            geRedDark: '#B81029',
+            geGold: '#D4AF37',
+            slateDark: '#0F172A',
+            slateCard: '#1E293B',
+            slateBorder: '#334155',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0B1120;
+      color: #F8FAFC;
+      font-family: 'Inter', sans-serif;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+    }
+    .tab-active {
+      background: linear-gradient(135deg, #E31837 0%, #B81029 100%);
+      color: #FFFFFF;
+      box-shadow: 0 4px 14px rgba(227, 24, 55, 0.35);
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0F172A;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-geRed selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-geRed to-red-800 flex items-center justify-center shadow-lg shadow-red-900/40 shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">GELM Field Underwriting Triage</h1>
+            <span class="px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full">V102026 &amp; GMCC 0534</span>
+          </div>
+          <p class="text-xs text-slate-400">Speed-to-Issuance &amp; Substandard Case Decision Support</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar" aria-label="Main Tabs">
+        <button onclick="switchTab('triage')" id="tab-btn-triage" class="tab-btn tab-active px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all">
+          1. Case Triage
+        </button>
+        <button onclick="switchTab('matrix')" id="tab-btn-matrix" class="tab-btn bg-slate-800/80 hover:bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all">
+          2. Substandard Matrix
+        </button>
+        <button onclick="switchTab('nml')" id="tab-btn-nml" class="tab-btn bg-slate-800/80 hover:bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all">
+          3. NML &amp; Financial Calc
+        </button>
+        <button onclick="switchTab('quiz')" id="tab-btn-quiz" class="tab-btn bg-slate-800/80 hover:bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-1.5">
+          <span>4. Live Quiz</span>
+          <span class="px-1.5 py-0.2 text-[10px] bg-geGold/20 text-amber-300 rounded-md font-bold">8Q</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ===================================================================== -->
+    <!-- TAB 1: INTERACTIVE SUBSTANDARD CASE TRIAGE CHECKER                    -->
+    <!-- ===================================================================== -->
+    <section id="tab-triage" class="tab-panel space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Input Controls -->
+        <div class="lg:col-span-5 space-y-5">
+          <div class="glass-card rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-geRed"></span>
+                Client &amp; Case Parameters
+              </h2>
+              <button onclick="resetTriage()" class="text-xs text-slate-400 hover:text-white underline">Reset</button>
+            </div>
+
+            <!-- Age & Income Group -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Client Age (ANB)</label>
+                <input type="number" id="triage-age" value="38" min="1" max="80" oninput="runTriage()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-geRed" />
+                <p class="text-[11px] text-slate-400 mt-1" id="age-band-hint">Band: 31 - 40 ANB</p>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Income / Risk Group</label>
+                <select id="triage-income-group" onchange="runTriage()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-geRed">
+                  <option value="income">Income Earner (Fixed/Salaried/Biz)</option>
+                  <option value="non_income">Housewife / Retiree / Student</option>
+                  <option value="non_fixed">Non-Fixed Income Group</option>
+                  <option value="bankrupt">Undischarged Bankrupt</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Height & Weight -> BMI -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-300">Build Check (Adult ANB 17+)</span>
+                <span id="bmi-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  BMI: 24.2 (Normal)
+                </span>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">Height (cm)</label>
+                  <input type="number" id="triage-height" value="170" min="50" max="220" oninput="runTriage()"
+                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-geRed" />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">Weight (kg)</label>
+                  <input type="number" id="triage-weight" value="70" min="5" max="250" oninput="runTriage()"
+                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-geRed" />
+                </div>
+              </div>
+              <p id="bmi-rule-text" class="text-[11px] text-slate-400">BMI 19–30: No build-related medical requirement.</p>
+            </div>
+
+            <!-- Medical Condition Selector -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Primary Medical History / Impairment</label>
+              <select id="triage-condition" onchange="runTriage()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-geRed">
+                <option value="clean">None / Clean Standard (No Medical History)</option>
+                <optgroup label="Green / Easiest Substandard Wins">
+                  <option value="htn_controlled">Hypertension (Single impairment, well-controlled, no risk factors)</option>
+                  <option value="cholesterol_controlled">Raised Cholesterol (Controlled, no other CV risk factors)</option>
+                  <option value="fatty_liver_mild">Fatty Liver (Mild / uncomplicated, normal LFTs &amp; ultrasound)</option>
+                  <option value="asthma_resolved">Asthma (Last attack &gt;2 years ago &amp; off all meds/inhaler)</option>
+                  <option value="thalassemia_minor">Thalassemia Minor / Trait (No anaemia, no follow-up/treatment)</option>
+                  <option value="kidney_stone_single">Kidney / Urinary Stone (Single episode &gt;2 yrs ago, fully recovered)</option>
+                  <option value="post_op_minor">Hernia / Piles / Gallstones / Cataract / Sinusitis (Post-op &gt;1 yr, full recovery)</option>
+                  <option value="gastric_mild">Gastritis / GERD (Mild, H. pylori negative, resolved/controlled)</option>
+                </optgroup>
+                <optgroup label="Amber / Approvable with Loading or Exclusion">
+                  <option value="fatty_liver_complex">Fatty Liver (With elevated LFTs / high BMI / co-morbidities)</option>
+                  <option value="diabetes">Diabetes Mellitus / Abnormal Blood Sugar</option>
+                  <option value="asthma_active">Asthma (Ongoing inhaler / occasional symptoms / oral steroids)</option>
+                  <option value="thyroid_controlled">Thyroid Disease (Hyper/Hypothyroidism or Goitre — treated &amp; stable)</option>
+                  <option value="slipped_disc">Slipped Disc / Backache / Spondylosis / Gout</option>
+                  <option value="gyn_benign">Breast Lump / Fibroid / Ovarian Cyst / PCOS / Endometriosis</option>
+                  <option value="mental_resolved">Depression / Anxiety (Resolved, off treatment, no suicide attempt)</option>
+                  <option value="hep_b_female">Hepatitis B Carrier — Female (Normal LFTs/AFP/Ultrasound)</option>
+                  <option value="hep_b_male">Hepatitis B Carrier — Male (Normal LFTs/AFP/Ultrasound)</option>
+                  <option value="thalassemia_major">Thalassemia Major / Anaemia requiring monitoring</option>
+                </optgroup>
+                <optgroup label="Red / High Scrutiny, Upfront Postpone or Decline">
+                  <option value="stroke_cad_recent">Stroke / Heart Attack (CAD) / TIA (&lt;6–12 months ago)</option>
+                  <option value="stroke_cad_old">Stroke / Heart Attack (CAD) / TIA (&gt;1 year ago, stable)</option>
+                  <option value="cancer_history">Cancer / Pre-malignant (CIN 2/3 &lt;6 mos or unbiopsied growth)</option>
+                  <option value="pregnancy_late">Pregnancy (&ge;32 weeks with age &le;16 or &ge;46, or complications)</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <!-- Proposed Plan Series & Sum Assured -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Proposed Plan Series</label>
+                <select id="triage-plan" onchange="runTriage()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-geRed">
+                  <option value="ilp">Conventional ILP / Traditional</option>
+                  <option value="spm">SmartProtect Max / Sure</option>
+                  <option value="legacy">Legacy Series (SLM/G110L/SPW)</option>
+                  <option value="prestige">Prestige Series</option>
+                  <option value="gmcc">Great Multi Cancer Care (0534)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Aggregated Sum Assured (RM)</label>
+                <input type="number" id="triage-sa" value="300000" step="50000" min="10000" oninput="runTriage()"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-geRed" />
+              </div>
+            </div>
+
+            <!-- GSPC Qualifier Toggle -->
+            <div class="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-xl px-3.5 py-2.5">
+              <div>
+                <span class="text-xs font-semibold text-white">GSPC Qualifier Agent?</span>
+                <p class="text-[11px] text-slate-400">Higher NML &amp; Financial Limit thresholds apply</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="triage-gspc" onchange="runTriage()" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-geRed"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Instant Triage Output -->
+        <div class="lg:col-span-7 space-y-4" id="triage-output-container">
+          <!-- Dynamic Content Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 2: QUICK CHEAT-SHEET MATRIX                                       -->
+    <!-- ===================================================================== -->
+    <section id="tab-matrix" class="tab-panel hidden space-y-5">
+      <div class="glass-card rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white">Substandard Wins &amp; Plan Pivots Matrix</h2>
+            <p class="text-xs text-slate-400">Filter by approval speed tier or search any medical condition from V102026 &amp; GMCC 0534.</p>
+          </div>
+          <!-- Search Box -->
+          <div class="relative w-full md:w-72">
+            <input type="text" id="matrix-search" onkeyup="renderMatrix()" placeholder="Search condition (e.g. Diabetes, Fatty liver)..."
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3.5 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-geRed" />
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Tier Filter Pills -->
+        <div class="flex flex-wrap gap-2">
+          <button onclick="setMatrixFilter('all')" id="filter-all" class="matrix-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-900">All Conditions</button>
+          <button onclick="setMatrixFilter('green')" id="filter-green" class="matrix-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25">Green: Fastest Standard</button>
+          <button onclick="setMatrixFilter('amber')" id="filter-amber" class="matrix-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25">Amber: Loading / Exclusion</button>
+          <button onclick="setMatrixFilter('red')" id="filter-red" class="matrix-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/15 text-red-300 border border-red-500/30 hover:bg-red-500/25">Red: Postpone / Decline Triggers</button>
+          <button onclick="setMatrixFilter('gmcc')" id="filter-gmcc" class="matrix-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30">★ GMCC (0534) Standard Pivot</button>
+        </div>
+      </div>
+
+      <!-- Matrix Cards Grid -->
+      <div id="matrix-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 3: NML & FINANCIAL LIMIT QUICK CALCULATOR                         -->
+    <!-- ===================================================================== -->
+    <section id="tab-nml" class="tab-panel hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Calculator Inputs -->
+        <div class="lg:col-span-5 glass-card rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="border-b border-slate-700/80 pb-3">
+            <h2 class="text-base font-bold text-white">NML &amp; Financial Limit Calculator</h2>
+            <p class="text-xs text-slate-400">Revised 1 October 2026 Tables • Avoid accidental ME/ECG/TMX/GE5 triggers</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Client Age (ANB)</label>
+              <input type="number" id="nml-age" value="42" min="1" max="80" oninput="calcNML()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-geRed" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Agent Tier</label>
+              <select id="nml-gspc" onchange="calcNML()"
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-geRed">
+                <option value="non_gspc">Non-GSPC</option>
+                <option value="gspc">GSPC Qualifier</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Product Table Category</label>
+            <select id="nml-category" onchange="calcNML()"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-geRed">
+              <option value="ilp">Conventional ILP &amp; Traditional Plans</option>
+              <option value="spm">SmartProtect Max (0429-0431) &amp; SmartProtect Sure (0509)</option>
+              <option value="legacy">Legacy Series (Smart Legacy, G110L, SPW Plus/Max, SRM)</option>
+              <option value="prestige">Prestige Series Plans</option>
+            </select>
+          </div>
+
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 space-y-3">
+            <span class="text-xs font-bold text-amber-300 uppercase tracking-wider">Aggregated Sum Assured Builder (Within 1 Year)</span>
+            
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Basic Plan Sum Assured (RM)</label>
+              <input type="number" id="nml-base-sa" value="500000" step="50000" min="0" oninput="calcNML()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-geRed" />
+            </div>
+
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Basic Plan Multiplier Rule (Page 20)</label>
+              <select id="nml-base-mult" onchange="calcNML()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-geRed">
+                <option value="1.0">100% — Standard ILP / Endowment / Whole Life / Term</option>
+                <option value="2.0">200% — Great 110 Legacy (0488) / Great Multi Cancer Care (0534)</option>
+                <option value="3.0">300% — Great Early Triple Care (0479)</option>
+                <option value="5.0">500% — Great Retirement Pride (8016)</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">CI / Term Rider SA (RM)</label>
+                <input type="number" id="nml-rider-sa" value="200000" step="50000" min="0" oninput="calcNML()"
+                  class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-geRed" />
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">Rider Multiplier (Page 21)</label>
+                <select id="nml-rider-mult" onchange="calcNML()"
+                  class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-geRed">
+                  <option value="1.0">100% — IL CI Plus / Level Term / LadyCare</option>
+                  <option value="0.5">50% — Smart Early Payout CriticalCare</option>
+                  <option value="2.1">210% — Smart Critical Relief (U190/U837)</option>
+                  <option value="2.25">225% — Smart Critical Relief Campaign (U234)</option>
+                  <option value="2.5">250% — Smart Multi Critical Care (U198/U822)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Existing / In-force Coverage in Last 10 Yrs (GELM &amp; Other Insurers, RM)</label>
+              <input type="number" id="nml-existing-10yr" value="500000" step="100000" min="0" oninput="calcNML()"
+                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-geRed" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Calculator Results & Multiplier Reference -->
+        <div class="lg:col-span-7 space-y-5">
+          <div id="nml-result-card" class="glass-card rounded-2xl p-6 shadow-xl space-y-4">
+            <!-- Populated by JS -->
+          </div>
+
+          <!-- Quick Income Replacement Formula Reference (Page 6) -->
+          <div class="glass-card rounded-2xl p-5 shadow-xl space-y-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span class="text-geGold">★</span> Maximum Income Replacement &amp; Group Caps (Page 6 &amp; 22)
+            </h3>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+              <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                <div class="text-[11px] text-slate-400">Up to Age 40</div>
+                <div class="text-base font-extrabold text-white mt-0.5">30x Life</div>
+                <div class="text-[11px] text-amber-300">20x DD/CI</div>
+              </div>
+              <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                <div class="text-[11px] text-slate-400">Age 41–50</div>
+                <div class="text-base font-extrabold text-white mt-0.5">25x Life</div>
+                <div class="text-[11px] text-amber-300">15x DD/CI</div>
+              </div>
+              <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                <div class="text-[11px] text-slate-400">Age 51–55</div>
+                <div class="text-base font-extrabold text-white mt-0.5">20x Life</div>
+                <div class="text-[11px] text-amber-300">10x DD/CI</div>
+              </div>
+              <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                <div class="text-[11px] text-slate-400">Age 56–60</div>
+                <div class="text-base font-extrabold text-white mt-0.5">15x Life</div>
+                <div class="text-[11px] text-amber-300">8x DD/CI</div>
+              </div>
+              <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+                <div class="text-[11px] text-slate-400">Age 61–70</div>
+                <div class="text-base font-extrabold text-white mt-0.5">10x Life</div>
+                <div class="text-[11px] text-amber-300">5x DD/CI</div>
+              </div>
+            </div>
+            <div class="text-xs text-slate-300 bg-slate-900/70 rounded-xl p-3 border border-slate-800 space-y-1">
+              <p><strong class="text-white">Juvenile (14d–18):</strong> Up to RM1M without parent match (max RM3M Life/TPD, RM2M DD across all insurers).</p>
+              <p><strong class="text-white">Housewife/Retiree/Non-Income:</strong> Up to RM1M without spouse match (max RM3M Life/TPD, RM2M DD across all insurers).</p>
+              <p><strong class="text-white">Non-Fixed Income:</strong> Up to RM600k without spouse match (max RM1M total).</p>
+              <p><strong class="text-white">Undischarged Bankrupt:</strong> Max RM150k Life/TPD/DD (3rd-party spouse/company only), H&amp;S max RM400 R&amp;B.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 4: LIVE MEETING QUIZ / KAHOOT COMPANION MODE                      -->
+    <!-- ===================================================================== -->
+    <section id="tab-quiz" class="tab-panel hidden space-y-5">
+      <div class="glass-card rounded-2xl p-6 shadow-xl max-w-4xl mx-auto space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-4">
+          <div>
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-geRed/20 text-red-300 border border-geRed/40">
+              Live Floor + Zoom Challenge
+            </span>
+            <h2 class="text-xl font-extrabold text-white mt-2">Substandard Speed-to-Issuance Quiz</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="quiz-progress-text" class="text-xs font-bold text-slate-300 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
+              Question 1 of 8
+            </span>
+            <span id="quiz-score-badge" class="text-xs font-bold text-amber-300 bg-amber-500/15 px-3 py-1.5 rounded-lg border border-amber-500/30">
+              Score: 0
+            </span>
+          </div>
+        </div>
+
+        <!-- Question Card -->
+        <div id="quiz-body" class="space-y-5">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Quiz Controls -->
+        <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+          <button onclick="prevQuestion()" id="btn-prev-q" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40">
+            ← Previous
+          </button>
+          <button onclick="restartQuiz()" class="text-xs text-slate-400 hover:text-white underline">
+            Restart Quiz
+          </button>
+          <button onclick="nextQuestion()" id="btn-next-q" class="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-geRed hover:bg-geRedDark text-white shadow-lg shadow-red-900/30">
+            Next Question →
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer Disclaimer -->
+  <footer class="border-t border-slate-800/80 bg-slate-950/80 py-4 px-4 text-center">
+    <p class="text-[11px] text-slate-400 max-w-4xl mx-auto">
+      <strong>CONFIDENTIAL — FOR INTERNAL GELM AGENCY REFERENCE ONLY.</strong> Based on Great Eastern Life Assurance (Malaysia) Field Underwriting Guide (V102026) &amp; Great Multi Cancer Care (0534) Quick Guide (7 Oct 2025). All applications remain subject to official New Business Underwriting assessment and Schedule 9 duty of disclosure.
+    </p>
+  </footer>
+
+  <!-- ======================================================================= -->
+  <!-- JAVASCRIPT LOGIC & KNOWLEDGE BASE                                       -->
+  <!-- ======================================================================= -->
+  <script>
+    // -------------------------------------------------------------------------
+    // 1. TAB SWITCHING LOGIC
+    // -------------------------------------------------------------------------
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('tab-active');
+        btn.classList.add('bg-slate-800/80', 'text-slate-300');
+      });
+      const activeBtn = document.getElementById('tab-btn-' + tabId);
+      activeBtn.classList.add('tab-active');
+      activeBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. CONDITION DATABASE (STRICTLY FROM V102026 & GMCC 0534 QUICK GUIDE)
+    // -------------------------------------------------------------------------
+    const CONDITION_DATA = {
+      clean: {
+        name: "Clean Standard (No Medical History)",
+        tier: "green",
+        tierLabel: "FASTEST STRAIGHT-THROUGH ELIGIBLE",
+        badgeColor: "emerald",
+        outcomeSummary: "Standard rates for all coverages (Life, TPD, CI/DD, Medical/H&S) provided within NML, Financial Limit, and Build guidelines.",
+        gmccEligible: true,
+        gmccNote: "Eligible for Standard Rate on GMCC (0534) as well.",
+        planPivot: "Submit via Rule-Based Underwriting Engine (eSubmission/mPOS) within Non-Medical Limit (NML) for fastest straight-through issuance.",
+        prepChecklist: [
+          "Verify accurate height & weight (BMI 19–30 avoids build ME).",
+          "Check 1-year aggregated Sum Assured against NML table so you don't accidentally trigger ME/ECG/GE5.",
+          "Collect full first premium upon submission to activate Conditional Interim Cover Certificate (CICC — up to RM500k accidental death/TPD temporary cover for 90 days)."
+        ],
+        clientScript: "\"Because your health record is clean and we are keeping the coverage within Great Eastern's Non-Medical Limit, your policy can go through straight-through approval without needing any clinic checkups.\""
+      },
+      htn_controlled: {
+        name: "Hypertension (Single impairment, well-controlled)",
+        tier: "green",
+        tierLabel: "FAST-TRACK SUBSTANDARD — HIGH STANDARD ODDS",
+        badgeColor: "emerald",
+        outcomeSummary: "Best Case: Standard terms for ALL coverage if single impairment without other cardiovascular risk factors and well-controlled. Worst Case: Loading on Life/TPD/DD/H&S (or Life-only if poorly controlled).",
+        gmccEligible: true,
+        gmccNote: "GMCC (0534) Quick Guide lists Hypertension/High Blood Pressure under 'Possible Standard Outcome' (unless secondary to another disease).",
+        planPivot: "Strong candidate for full ILP + Medical Card if BP is well-controlled on 1 medication with normal UFEME and no diabetes/high cholesterol/smoking. Also eligible for Standard rate on GMCC (0534).",
+        prepChecklist: [
+          "Hypertension Questionnaire completed by Life-to-be Assured (submit upfront!).",
+          "Prepare client for Panel Doctor Medical Examination (ME) + 2 additional BP readings during ME + UFEME.",
+          "Include last 6 months' clinic BP readings & exact medication names/dosages.",
+          "Tick YES on 'Submission of Hardcopy Documents' during eSubmission/mPOS."
+        ],
+        clientScript: "\"Since your blood pressure is well-controlled with no other risk factors, Great Eastern can still consider you at Standard rates—we just need to submit the Hypertension Questionnaire upfront and do a quick panel clinic BP and urine check.\""
+      },
+      cholesterol_controlled: {
+        name: "Raised Cholesterol (Hypercholesterolaemia — Controlled)",
+        tier: "green",
+        tierLabel: "FAST-TRACK SUBSTANDARD — HIGH STANDARD ODDS",
+        badgeColor: "emerald",
+        outcomeSummary: "Best Case: Standard terms for all coverage subject to favourable lipid profile (GE7) and absence of other cardiovascular risk factors. Worst Case: Life-only to Postponed if severely elevated/uncontrolled.",
+        gmccEligible: true,
+        gmccNote: "GMCC (0534) lists Hyperlipidaemia/High Cholesterol under 'Possible Standard Outcome'.",
+        planPivot: "Full ILP + Medical Card is very achievable at Standard rates if latest fasting lipid profile (Total Cholesterol, HDL, LDL, Triglycerides) is controlled on statins/diet.",
+        prepChecklist: [
+          "Prepare for GE7 blood test (fasting lipid profile) at panel lab/clinic.",
+          "Attach latest lab blood test report (within 6 months validity for substandard applicants) if already done recently.",
+          "Declare exact statin/medication name and dosage clearly in proposal."
+        ],
+        clientScript: "\"Controlled cholesterol is one of the easiest conditions to get through at Standard rates—once the panel blood test confirms your lipid levels are stable, your full protection and medical card can proceed smoothly.\""
+      },
+      fatty_liver_mild: {
+        name: "Fatty Liver (Mild / Uncomplicated, Normal LFTs)",
+        tier: "green",
+        tierLabel: "FAST-TRACK — STANDARD TERMS ACHIEVABLE",
+        badgeColor: "emerald",
+        outcomeSummary: "Best Case: Standard terms for all coverage when liver enzymes (LFTs) are normal, Hepatitis B/C negative, and no obesity/diabetes/alcohol abuse. Worst Case: Postponed if LFTs are markedly raised or uninvestigated.",
+        gmccEligible: false,
+        gmccNote: "Note: On GMCC (0534), Fatty Liver falls under 'Various Outcomes' (requires ultrasound/LFTs) rather than automatic Standard.",
+        planPivot: "Submit existing health screening Ultrasound + Liver Function Test (LFT) upfront! Having normal LFTs and negative Hep B/C serology speeds up Standard issuance.",
+        prepChecklist: [
+          "Attach copy of Abdomen/Liver Ultrasound report + latest Liver Function Test (LFT) upfront.",
+          "Underwriting typically requires GE15 blood profile (and Hep B/C serology if not previously tested).",
+          "Ensure client's BMI and alcohol intake (<=6 units/day) are accurately declared."
+        ],
+        clientScript: "\"Mild fatty liver is very common—as long as we attach your recent ultrasound and normal liver blood test upfront, Great Eastern can offer Standard coverage without long delays.\""
+      },
+      asthma_resolved: {
+        name: "Asthma (Last attack >2 years ago & off all meds)",
+        tier: "green",
+        tierLabel: "FAST-TRACK STANDARD ELIGIBLE",
+        badgeColor: "emerald",
+        outcomeSummary: "Per V102026 Page 47: Case of asthma with last attack more than 2 years ago AND currently off treatment/medication may be accepted as STANDARD for all coverage.",
+        gmccEligible: true,
+        gmccNote: "GMCC (0534) lists Asthma under 'Possible Standard Outcome'.",
+        planPivot: "Do NOT skip declaring childhood/past asthma—declare it with the Asthma Questionnaire showing >2 years attack-free and off inhalers for clean Standard approval.",
+        prepChecklist: [
+          "Asthma Questionnaire completed by Life-to-be Assured upfront (clearly state date of last attack >2 years ago and zero inhaler/steroid use).",
+          "Confirm non-smoker status and no ER admissions or Status Asthmaticus history."
+        ],
+        clientScript: "\"Because your last asthma episode was more than two years ago and you no longer need inhalers, Great Eastern's guideline explicitly allows Standard terms across all benefits.\""
+      },
+      thalassemia_minor: {
+        name: "Thalassemia Minor / Trait (No Anaemia)",
+        tier: "green",
+        tierLabel: "FAST-TRACK STANDARD ELIGIBLE",
+        badgeColor: "emerald",
+        outcomeSummary: "Per V102026 Page 59: Case of Thalassemia Minor or Trait without history of anaemia or symptoms may be accepted as STANDARD for all coverage.",
+        gmccEligible: true,
+        gmccNote: "GMCC (0534) confirms Thalassemia Minor/Trait (no anaemia/follow-up/treatment) is eligible for Standard outcome.",
+        planPivot: "Full ILP + Medical Card + CI + GMCC (0534) all eligible at Standard terms once Haemoglobin Electrophoresis / FBC confirms carrier/trait status without anaemia.",
+        prepChecklist: [
+          "Attach copy of Haemoglobin Electrophoresis / Full Blood Count (FBC) report showing normal Hb levels and no blood transfusions.",
+          "State clearly in declaration: 'Thalassemia Minor/Trait only, asymptomatic, no treatment or follow-up required.'"
+        ],
+        clientScript: "\"Being a Thalassemia Minor carrier without anaemia won't hold back your coverage—we just attach your blood test result so underwriting approves you at Standard rates.\""
+      },
+      kidney_stone_single: {
+        name: "Kidney / Urinary Stone (Single episode >2 yrs ago)",
+        tier: "green",
+        tierLabel: "FAST-TRACK STANDARD ELIGIBLE",
+        badgeColor: "emerald",
+        outcomeSummary: "Per V102026 Page 68: Single episode of urinary/kidney stone more than 2 years ago with complete recovery (passed or removed, normal renal function/UFEME) may be accepted as STANDARD.",
+        gmccEligible: true,
+        gmccNote: "GMCC (0534) lists Ureteric/Kidney Stone under 'Possible Standard Outcome'.",
+        planPivot: "Full ILP + Medical Card eligible at Standard terms if single episode >2 years ago with clean follow-up ultrasound/KUB and UFEME.",
+        prepChecklist: [
+          "Submit discharge summary / follow-up ultrasound or KUB X-ray confirming stone-free status >2 years ago.",
+          "Note: If <2 years or recurrent stones, expect H&S exclusion or loading."
+        ],
+        clientScript: "\"Since it was a single stone over two years ago and you've been completely stone-free since then, we can submit your follow-up clearance for Standard coverage.\""
+      },
+      post_op_minor: {
+        name: "Hernia / Piles / Gallstones / Cataract / Sinusitis (Post-op >1 yr)",
+        tier: "green",
+        tierLabel: "FAST-TRACK STANDARD ELIGIBLE",
+        badgeColor: "emerald",
+        outcomeSummary: "Per V102026 Pages 63–75: Hernia, Piles, Gallstones, Fistula (>1 yr), Cataract (>1 yr), or Sinusitis (>1 yr) surgically treated with full recovery and no residuals may be accepted as STANDARD.",
+        gmccEligible: true,
+        gmccNote: "All of these resolved post-op conditions are eligible for Standard outcome on GMCC (0534).",
+        planPivot: "Great candidates for full coverage! Always include surgery date, hospital name, and confirmation of full discharge with zero complications.",
+        prepChecklist: [
+          "Submit surgical discharge summary + Histopathology (HPE) report (especially for gallstones/cysts/sinus tissue) confirming benign findings.",
+          "Confirm full recovery and discharge from follow-up (>1 year post-op for fistula, cataract, tonsillitis, sinusitis)."
+        ],
+        clientScript: "\"Because your surgery was completed with full recovery and normal biopsy results, Great Eastern can offer Standard rates across your life and medical plan.\""
+      },
+      gastric_mild: {
+        name: "Gastritis / GERD (Mild, H. pylori negative)",
+        tier: "green",
+        tierLabel: "FAST-TRACK STANDARD ELIGIBLE",
+        badgeColor: "emerald",
+        outcomeSummary: "Best Case: Standard terms for all coverage if mild/acute gastritis or GERD, H. pylori negative, no ulcer/Barrett's oesophagus, and resolved.",
+        gmccEligible: true,
+        gmccNote: "GMCC (0534) accepts Gastritis (H. pylori negative, no metaplasia/pre-malignant findings) at Standard rate.",
+        planPivot: "Complete the Gastric Questionnaire upfront to avoid unnecessary Attending Doctor's Statement (ADS/MAR) delays.",
+        prepChecklist: [
+          "Gastric Questionnaire completed by Life-to-be Assured upfront.",
+          "If OGDS (scope) or Urea Breath Test was done, attach the report showing negative H. pylori and no ulcers."
+        ],
+        clientScript: "\"Mild gastritis is very straightforward—filling out the Gastric Questionnaire upfront lets underwriting approve your plan without chasing your clinic for reports.\""
+      },
+      fatty_liver_complex: {
+        name: "Fatty Liver (With Elevated LFTs / High BMI / Co-morbidities)",
+        tier: "amber",
+        tierLabel: "MODERATE SCRUTINY — PREP LABS UPFRONT",
+        badgeColor: "amber",
+        outcomeSummary: "Elevated liver enzymes (ALT/AST/GGT) combined with high BMI, raised cholesterol, or diabetes often trigger Loading or Postponement until LFTs normalize.",
+        gmccEligible: false,
+        gmccNote: "GMCC (0534) requires full investigation reports for Fatty Liver (under 'Various Outcomes').",
+        planPivot: "If LFTs are mildly elevated (<2x upper limit), submit latest Ultrasound + GE15 + Hep B/C serology. If LFTs are >2–3x normal, advise client to repeat LFTs after 3 months of lifestyle/doctor management before applying.",
+        prepChecklist: [
+          "Latest Liver Function Test (LFT) + Hepatitis B & C serology + GE15 blood profile.",
+          "Abdominal Ultrasound report (within 6 months).",
+          "MAR from attending doctor if currently under specialist follow-up."
+        ],
+        clientScript: "\"When fatty liver comes with raised liver enzymes, underwriting will want to see your latest ultrasound and blood panel first—if enzymes are still high, they may ask us to re-check after a few months.\""
+      },
+      diabetes: {
+        name: "Diabetes Mellitus / Abnormal Blood Sugar",
+        tier: "amber",
+        tierLabel: "SUBSTANDARD — LIFE/TPD LOADED; DD & H&S DECLINED",
+        badgeColor: "amber",
+        outcomeSummary: "Per V102026 Page 57: Best Case is Loading on Life/TPD with Critical Illness (DD) and Medical Card (H&S) DECLINED. Worst Case: Declined (if poor HbA1c control or target organ complications).",
+        gmccEligible: true,
+        gmccNote: "★ MAJOR PIVOT: Great Multi Cancer Care (0534) lists Diabetes Mellitus under 'Possible Standard Outcome' (unless arising from pancreatic tumour/growth)!",
+        planPivot: "1) Do NOT promise a Medical Card or standard CI rider—set expectation that H&S and DD will be declined on conventional plans. 2) Propose Legacy/Wealth ILP (Life/TPD with loading) + Great Multi Cancer Care (0534) for cancer protection at Standard rates!",
+        prepChecklist: [
+          "Diabetic Questionnaire from Attending Doctor + MAR.",
+          "Panel ME + GE6 blood test (FBS, HbA1c, Renal & Lipid profile) + UFEME (check microalbuminuria).",
+          "Latest HbA1c reading (ideally <7.5%–8.0% with no retinopathy/neuropathy/nephropathy)."
+        ],
+        clientScript: "\"For diabetic clients, traditional medical cards and critical illness plans are declined—however, we can still secure your family's Life/TPD legacy protection (with a health loading) AND get you standalone cancer protection under Great Multi Cancer Care at Standard rates.\""
+      },
+      asthma_active: {
+        name: "Asthma (Ongoing Inhaler / Occasional Symptoms)",
+        tier: "amber",
+        tierLabel: "APPROVABLE — POSSIBLE LOADING OR H&S EXCLUSION",
+        badgeColor: "amber",
+        outcomeSummary: "Mild-to-moderate controlled asthma on preventative inhaler is usually approvable with Loading or Respiratory Exclusion on H&S. Severe asthma with oral steroids/ER admissions may be declined.",
+        gmccEligible: true,
+        gmccNote: "GMCC (0534) lists Asthma under 'Possible Standard Outcome'.",
+        planPivot: "Submit both Client & Doctor Asthma Questionnaires upfront to show good control (no ER visits, no oral steroids, non-smoker).",
+        prepChecklist: [
+          "Asthma Questionnaire from Life-to-be Assured AND Attending Doctor.",
+          "Lung Function Test (Spirometry) if deemed necessary for moderate/persistent symptoms."
+        ],
+        clientScript: "\"Because you still use an inhaler occasionally, Great Eastern can still cover you—expect either a small loading or an exclusion on asthma-related hospitalization, while everything else is fully covered.\""
+      },
+      thyroid_controlled: {
+        name: "Thyroid Disease (Hyper/Hypothyroidism or Benign Goitre)",
+        tier: "amber",
+        tierLabel: "LIFE/TPD/DD STANDARD; H&S USUALLY EXCLUDED",
+        badgeColor: "amber",
+        outcomeSummary: "Per V102026 Pages 58–59: Best Case is Standard terms for Life/TPD/DD with EXCLUSION on Medical Card (H&S) once treated and euthyroid. Untreated thyroid disease is postponed upfront.",
+        gmccEligible: false,
+        gmccNote: "Goitre, Hypothyroidism, and Thyroiditis fall under 'Various Outcomes' on GMCC (0534) — requires HPE/ultrasound/TFTs.",
+        planPivot: "Propose ILP with CI (DD) + Medical Card, setting clear upfront expectation that thyroid disorders will be excluded on H&S while Life/TPD/CI can be Standard.",
+        prepChecklist: [
+          "Panel ME + GE12 (Thyroid Function Test: Free T3, Free T4, TSH).",
+          "For Goitre/Nodules: Ultrasound report + Histopathology (HPE)/Biopsy report confirming benign status (mandatory to avoid postponement).",
+          "MAR from attending doctor confirming stable medication and normal resting pulse."
+        ],
+        clientScript: "\"Once your thyroid levels are stable on medication and biopsy/ultrasound confirms it's benign, Great Eastern can offer Standard rates for Life, TPD, and Critical Illness, with only a thyroid exclusion on your medical card.\""
+      },
+      slipped_disc: {
+        name: "Slipped Disc / Backache / Spondylosis / Gout",
+        tier: "amber",
+        tierLabel: "LIFE/DD STANDARD; H&S/TPD EXCLUSION OR LOADING",
+        badgeColor: "amber",
+        outcomeSummary: "Per V102026 Pages 77–80: Best Case for mild/recovered slipped disc is Standard on all coverage; Worst Case is Loading on Life with DD/H&S spine exclusion. Gout: Life/TPD/DD Standard with H&S loading/exclusion.",
+        gmccEligible: true,
+        gmccNote: "★ MAJOR PIVOT: GMCC (0534) lists Back Disorders (Prolapsed Intervertebral Disc, Slipped Disc, Scoliosis, Spondylitis) under 'Possible Standard Outcome'!",
+        planPivot: "Submit Back & Neck Pain Questionnaires + MRI report upfront. Expect a spine/back exclusion on H&S/TPD if chronic, while Life, CI, and GMCC (0534) proceed smoothly.",
+        prepChecklist: [
+          "Back & Neck Pain Questionnaire from Life-to-be Assured AND Attending Doctor.",
+          "Copy of Spine MRI / X-ray report & surgical discharge summary (if operated).",
+          "For Gout: ME + GE14 (Uric acid & renal profile)."
+        ],
+        clientScript: "\"For a slipped disc, Great Eastern can still approve your Life, Critical Illness, and Cancer cover at Standard terms—your medical card will simply carry a specific exclusion for spine/back treatments.\""
+      },
+      gyn_benign: {
+        name: "Breast Lump / Fibroid / Ovarian Cyst / PCOS / Endometriosis",
+        tier: "amber",
+        tierLabel: "LIFE/TPD/DD STANDARD; H&S EXCLUSION (BIOPSY/IMAGING REQUIRED)",
+        badgeColor: "amber",
+        outcomeSummary: "Per V102026 Pages 85–86: Best Case is Standard for Life/TPD/DD with EXCLUSION on H&S (Endometriosis post-op with full recovery can even get Standard on all coverage). Uninvestigated/unbiopsied lumps are postponed upfront.",
+        gmccEligible: true,
+        gmccNote: "Endometriosis and PCOS are listed under 'Possible Standard Outcome' on GMCC (0534); cysts/fibroids/lumps require benign HPE/imaging report.",
+        planPivot: "NEVER submit a breast lump, cyst, or fibroid case without the Ultrasound/Mammogram or HPE biopsy report—missing pathology triggers immediate upfront postponement!",
+        prepChecklist: [
+          "MANDATORY: Copy of Ultrasound / Mammogram / HPE Biopsy report confirming benign status and stable size.",
+          "For PCOS: ME + GE6 + GE7 (to rule out impaired glucose/lipids).",
+          "MAR from attending gynaecologist if currently on medication or follow-up."
+        ],
+        clientScript: "\"As long as we attach your benign ultrasound or biopsy report upfront, Great Eastern can approve your Life and Critical Illness at Standard rates, with only a specific exclusion on your medical card for that cyst/fibroid.\""
+      },
+      mental_resolved: {
+        name: "Depression / Anxiety (Resolved, Off Treatment)",
+        tier: "amber",
+        tierLabel: "LIFE COVERAGE ONLY (DD, TPD & H&S DECLINED)",
+        badgeColor: "amber",
+        outcomeSummary: "Per V102026 Pages 43–44: Best Case is LIFE COVERAGE ONLY with DD, TPD, and H&S DECLINED (subject to favourable Psychiatrist MAR & off treatment). Ongoing severe symptoms or recent suicide attempt (<1 yr) will be postponed/declined.",
+        gmccEligible: true,
+        gmccNote: "★ MAJOR PIVOT: GMCC (0534) lists Psychiatric Disorders (except alcohol/drug dependence) under 'Possible Standard Outcome'!",
+        planPivot: "Do NOT propose a Medical Card, TPD, or standard CI plan—propose a Legacy / Wealth Accumulation Life plan (Life cover only) paired with Great Multi Cancer Care (0534)!",
+        prepChecklist: [
+          "Mental Health Questionnaire completed by Life-to-be Assured.",
+          "MAR from attending Psychiatrist confirming diagnosis, cessation of medication, full work/social stability, and no suicide attempts.",
+          "Panel Medical Examination (ME)."
+        ],
+        clientScript: "\"For past anxiety or depression, medical cards and TPD riders aren't offerable—so we focus on securing your Life legacy plan plus standalone cancer coverage under Great Multi Cancer Care.\""
+      },
+      hep_b_female: {
+        name: "Hepatitis B Carrier — Female (Asymptomatic, Normal LFTs)",
+        tier: "amber",
+        tierLabel: "LIFE/TPD/DD STANDARD; H&S LOADED",
+        badgeColor: "amber",
+        outcomeSummary: "Per V102026 Page 65: Best Case for Female Hepatitis B carrier is STANDARD terms for Life, TPD, and DD with LOADING on Medical Card (H&S), provided serial LFTs, AFP, and liver ultrasound are normal.",
+        gmccEligible: false,
+        gmccNote: "Hepatitis B is under 'Various Outcomes' on GMCC (0534) — requires serial LFTs, AFP, and liver ultrasound.",
+        planPivot: "Female inactive Hep B carriers get much better terms than males! Submit serial LFTs, AFP, and Liver Ultrasound upfront to secure Standard Life/TPD/CI + loaded Medical Card.",
+        prepChecklist: [
+          "GE8 blood profile + AFP + Hepatitis C & HIV serology.",
+          "Serial Liver Function Tests (LFTs) + recent Liver Ultrasound report (no cirrhosis/fibrosis).",
+          "MAR from attending doctor if under regular gastro/hepatology follow-up."
+        ],
+        clientScript: "\"For female Hepatitis B carriers with normal liver function tests and ultrasound, Great Eastern can actually offer Standard rates on Life, TPD, and Critical Illness, with just a loading on your medical card.\""
+      },
+      hep_b_male: {
+        name: "Hepatitis B Carrier — Male (Asymptomatic, Normal LFTs)",
+        tier: "amber",
+        tierLabel: "LIFE/TPD STANDARD; DD & H&S LOADED",
+        badgeColor: "amber",
+        outcomeSummary: "Per V102026 Page 65: Best Case for Male Hepatitis B carrier is STANDARD terms for Life and TPD with LOADING on both DD (CI) and Medical Card (H&S), subject to normal LFTs, AFP, and ultrasound.",
+        gmccEligible: false,
+        gmccNote: "Hepatitis B is under 'Various Outcomes' on GMCC (0534) — subject to serial LFTs, AFP, and liver ultrasound.",
+        planPivot: "Set expectation upfront that both CI and H&S will carry a loading (due to higher male hepatocellular risk), while Life & TPD remain Standard.",
+        prepChecklist: [
+          "GE8 blood profile + AFP + HBV DNA / HBeAg (if available) + Hep C & HIV serology.",
+          "Serial Liver Function Tests (LFTs) + recent Liver Ultrasound report.",
+          "MAR from attending doctor."
+        ],
+        clientScript: "\"Because your liver blood tests and ultrasound are normal, Great Eastern can offer your Life and TPD at Standard rates, while your Critical Illness and Medical Card will carry a health loading.\""
+      },
+      thalassemia_major: {
+        name: "Thalassemia Major / Anaemia on Follow-up",
+        tier: "red",
+        tierLabel: "HIGH SCRUTINY — LIFE ONLY OR DECLINED",
+        badgeColor: "red",
+        outcomeSummary: "Regular blood transfusions, iron chelation therapy, or severe anaemia lead to heavy loading, Life-only terms, or Decline.",
+        gmccEligible: false,
+        gmccNote: "GMCC (0534) places Thalassemia with anaemia/follow-up/treatment under 'Various Outcomes' (requires MAR & blood profile).",
+        planPivot: "Gather full haematology MAR and GE13 blood profile first before promising any medical or CI rider.",
+        prepChecklist: [
+          "MAR from attending Haematologist with transfusion & iron chelation history.",
+          "GE13 blood profile + Haemoglobin Electrophoresis."
+        ],
+        clientScript: "\"Because Thalassemia Major involves ongoing blood management, we will submit your haematologist's report first so underwriting can confirm what Life coverage terms are available.\""
+      },
+      stroke_cad_recent: {
+        name: "Stroke / Heart Attack (CAD) / TIA (<6–12 Months Ago)",
+        tier: "red",
+        tierLabel: "UPFRONT POSTPONE — DO NOT SUBMIT YET",
+        badgeColor: "red",
+        outcomeSummary: "Per V102026 Pages 39 & 51: Stroke within 1 year of diagnosis is POSTPONED UPFRONT. TIA, CAD, Heart Attack (MI), or Angina within 6 months of diagnosis is POSTPONED UPFRONT.",
+        gmccEligible: false,
+        gmccNote: "Any recent unstabilized vascular event (<6–12 months) must wait out the mandatory postponement period first.",
+        planPivot: "Save your agent and client time—calendar a follow-up date right after the 6-month (TIA/CAD) or 12-month (Stroke) waiting period passes.",
+        prepChecklist: [
+          "Do NOT submit new business application during the mandatory waiting period.",
+          "Advise client to keep all hospital discharge summaries, angiogram/echocardiogram/CT brain reports, and follow-up compliance records ready for re-application after waiting period."
+        ],
+        clientScript: "\"Great Eastern has a mandatory waiting period—6 months after a heart event/TIA and 12 months after a stroke—to ensure full stabilization before we apply.\""
+      },
+      stroke_cad_old: {
+        name: "Stroke / Heart Attack (CAD) / TIA (>1 Year Ago, Stable)",
+        tier: "amber",
+        tierLabel: "LIFE-ONLY COVERAGE (LOADED) — DD/TPD/H&S DECLINED",
+        badgeColor: "amber",
+        outcomeSummary: "Per V102026 Pages 39 & 51: Best Case after waiting period (>1 yr) is LIFE COVERAGE ONLY (with loading) subject to favourable Cardiologist/Neurologist MAR and ejection fraction/recovery. Worst Case: Declined.",
+        gmccEligible: true,
+        gmccNote: "★ MAJOR PIVOT: GMCC (0534) lists Stroke/CVA/TIA AND Heart Attack/CAD under 'Possible Standard Outcome' once stabilized!",
+        planPivot: "1) For Life legacy: Propose Wealth/Legacy ILP (Life cover only, expect loading). 2) For health/CI protection: Propose Great Multi Cancer Care (0534), where stable Stroke/CAD survivors can get Standard cancer rates!",
+        prepChecklist: [
+          "MAR from attending Cardiologist / Neurologist.",
+          "All investigation reports: Angiogram, Echocardiogram (LVEF%), Stress ECG, or Brain CT/MRI.",
+          "Panel ME + blood profile."
+        ],
+        clientScript: "\"Even after a past heart attack or stroke, we can still apply for Life legacy coverage AND standalone cancer protection under Great Multi Cancer Care—we just need your cardiologist's follow-up report.\""
+      },
+      cancer_history: {
+        name: "Cancer / Pre-malignant (CIN 2/3 <6 mos or Unbiopsied Growth)",
+        tier: "red",
+        tierLabel: "UPFRONT POSTPONE / DECLINE WITHOUT PATHOLOGY",
+        badgeColor: "red",
+        outcomeSummary: "Per V102026 Pages 70 & 86: Cancer/Tumour/Lump without Histopathology (HPE)/biopsy report is DECLINED/POSTPONED UPFRONT. CIN 2 or CIN 3 treated within 6 months is POSTPONED UPFRONT.",
+        gmccEligible: false,
+        gmccNote: "GMCC (0534) strictly DECLINES any history of cancer, carcinoma in-situ, carcinoid tumour, or uninvestigated growth.",
+        planPivot: "Never submit without full HPE/Biopsy report, TNM staging, and oncology treatment/follow-up records.",
+        prepChecklist: [
+          "MANDATORY: Histopathology (HPE) / Biopsy report + TNM staging + Oncology MAR + latest follow-up scans/tumour markers.",
+          "For CIN 2/3: Wait at least 6 months post-treatment with normal follow-up Pap smear/HPV test."
+        ],
+        clientScript: "\"Underwriting cannot assess any lump, CIN, or past cancer history without the final pathology (biopsy) report and oncology discharge summary—let's gather those first before submitting.\""
+      },
+      pregnancy_late: {
+        name: "Pregnancy (≥32 Weeks with Age ≤16 or ≥46, or Complications)",
+        tier: "red",
+        tierLabel: "UPFRONT POSTPONE UNTIL POST-DELIVERY",
+        badgeColor: "red",
+        outcomeSummary: "Per V102026 Page 86: Uncomplicated pregnancy before 32 weeks (age 17–45) is eligible for Standard terms. However, complications in current/previous pregnancy OR gestational age ≥32 weeks with ANB ≤16 or ≥46 is POSTPONED UPFRONT.",
+        gmccEligible: true,
+        gmccNote: "GMCC (0534) lists Pregnancy conditions (gestational diabetes, gestational hypertension, miscarriage history) under 'Possible Standard Outcome' (once resolved/post-delivery).",
+        planPivot: "If uncomplicated and <32 weeks (age 17–45), submit now! If ≥32 weeks with high-risk age or gestational complications, wait until after delivery and postnatal clearance.",
+        prepChecklist: [
+          "Antenatal checkup book / doctor's confirmation of gestational weeks and absence of gestational diabetes/pre-eclampsia.",
+          "Panel ME required if expectant mother is ANB ≤16 or ≥46."
+        ],
+        clientScript: "\"If your pregnancy is uncomplicated and below 32 weeks, we can get your plan approved right away—otherwise, underwriting will hold until after delivery.\""
+      }
+    };
+
+    // -------------------------------------------------------------------------
+    // 3. TAB 1: TRIAGE ENGINE LOGIC
+    // -------------------------------------------------------------------------
+    function getAgeBand(age) {
+      if (age <= 16) return "14 days - 16";
+      if (age <= 30) return "17 - 30";
+      if (age <= 40) return "31 - 40";
+      if (age <= 45) return "41 - 45";
+      if (age <= 50) return "46 - 50";
+      if (age <= 55) return "51 - 55";
+      if (age <= 60) return "56 - 60";
+      if (age <= 65) return "61 - 65";
+      if (age <= 70) return "66 - 70";
+      if (age <= 75) return "71 - 75";
+      return "76 - 80";
+    }
+
+    function evaluateBMI(age, bmi) {
+      if (age < 17) {
+        return {
+          status: "Juvenile Growth Chart",
+          color: "blue",
+          req: "Refer to Juvenile BMI-for-Age Percentile Chart (Page 36). Child Health Booklet / JME may be required if outside 5th–95th percentile.",
+          severe: false
+        };
+      }
+      if (bmi <= 13 || bmi >= 47) {
+        return {
+          status: `BMI ${bmi.toFixed(1)} — DECLINED RISK`,
+          color: "red",
+          req: "Build Guideline (Page 35): BMI ≤13 or ≥47 is DECLINED upfront.",
+          severe: true
+        };
+      }
+      if (bmi === 14 && age >= 42) {
+        return {
+          status: `BMI ${bmi.toFixed(1)} — DECLINED (ANB ≥42)`,
+          color: "red",
+          req: "Build Guideline (Page 35): BMI 14 is Declined for ANB 42 and above (Life-only consideration below ANB 42).",
+          severe: true
+        };
+      }
+      if (bmi >= 14 && bmi <= 16) {
+        return {
+          status: `BMI ${bmi.toFixed(1)} — Underweight (ME Required)`,
+          color: "amber",
+          req: "Build Guideline (Page 35): Panel ME required (BMI 14–15: Life coverage only).",
+          severe: false
+        };
+      }
+      if (bmi >= 17 && bmi <= 18.9) {
+        return {
+          status: `BMI ${bmi.toFixed(1)} — Mild Underweight (ME)`,
+          color: "amber",
+          req: "Build Guideline (Page 35): BMI 17–18 requires Panel ME.",
+          severe: false
+        };
+      }
+      if (bmi >= 19 && bmi <= 30.9) {
+        return {
+          status: `BMI ${bmi.toFixed(1)} — Optimal Build`,
+          color: "emerald",
+          req: "Build Guideline (Page 35): BMI 19–30 requires NO build-related medical exam.",
+          severe: false
+        };
+      }
+      if (bmi >= 31 && bmi <= 32.9) {
+        return {
+          status: `BMI ${bmi.toFixed(1)} — Borderline Overweight`,
+          color: "amber",
+          req: "Build Guideline (Page 35): BMI 31–32 requires Panel ME ONLY if co-morbidities or cardiovascular risk factors are present.",
+          severe: false
+        };
+      }
+      if (bmi >= 33 && bmi <= 37.9) {
+        return {
+          status: `BMI ${bmi.toFixed(1)} — Obese Class I/II (ME)`,
+          color: "amber",
+          req: "Build Guideline (Page 35): BMI 33–37 requires Panel ME.",
+          severe: false
+        };
+      }
+      if (bmi >= 38 && bmi <= 39.9) {
+        return {
+          status: `BMI ${bmi.toFixed(1)} — Obese Class II (ME + GE6 & GE7)`,
+          color: "amber",
+          req: "Build Guideline (Page 35): BMI 38–39 requires Panel ME + GE6 + GE7 blood profile.",
+          severe: false
+        };
+      }
+      // BMI 40 - 46
+      return {
+        status: `BMI ${bmi.toFixed(1)} — Obese Class III (LIFE ONLY)`,
+        color: "red",
+        req: "Build Guideline (Page 35): BMI 40–46 requires ME + GE6 + GE7, and ONLY Life coverage can be considered (TPD/DD/H&S declined).",
+        severe: false
+      };
+    }
+
+    function getNMLRequirement(plan, age, sa, isGspc) {
+      // Simplified exact lookup based on Oct 1, 2026 NML tables (Pages 13-19)
+      if (plan === 'gmcc') {
+        return {
+          withinNML: true,
+          nmlCap: "NML Not Applicable (Standard Clean)",
+          reqText: "NML is not applicable to Great Multi Cancer Care (0534) on clean lives (200% of BSA counts toward subsequent policies).",
+          finText: "Standard Financial Underwriting applies if total CI across all policies approaches RM5,000,000 (GMCC max RM1,000,000 per life)."
+        };
+      }
+
+      if (plan === 'ilp') {
+        if (age >= 61 && age <= 65) {
+          if (sa <= 200000) return { withinNML: true, nmlCap: "RM 200,000 (or RM100k w/ Medical)", reqText: "Within NML (Note: ME required if applying medical benefit above RM100k).", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 300000) return { withinNML: false, nmlCap: "RM 200,000", reqText: "Triggers: ME", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 400000) return { withinNML: false, nmlCap: "RM 200,000", reqText: "Triggers: ME, ECG", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 500000) return { withinNML: false, nmlCap: "RM 200,000", reqText: "Triggers: ME, ECG, GE2", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 1000000) return { withinNML: false, nmlCap: "RM 200,000", reqText: "Triggers: ME, ECG, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 2000000) return { withinNML: false, nmlCap: "RM 200,000", reqText: "Triggers: ME, TMX, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          return { withinNML: false, nmlCap: "RM 200,000", reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('ilp', sa, isGspc) };
+        }
+        if (age >= 66) {
+          if (sa <= 100000) return { withinNML: true, nmlCap: "RM 100,000", reqText: "Within NML (ME if applying medical benefit).", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 300000) return { withinNML: false, nmlCap: "RM 100,000", reqText: "Triggers: ME", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 400000) return { withinNML: false, nmlCap: "RM 100,000", reqText: "Triggers: ME, ECG", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 500000) return { withinNML: false, nmlCap: "RM 100,000", reqText: "Triggers: ME, ECG, GE2", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 1000000) return { withinNML: false, nmlCap: "RM 100,000", reqText: "Triggers: ME, ECG, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 2000000) return { withinNML: false, nmlCap: "RM 100,000", reqText: "Triggers: ME, TMX, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          return { withinNML: false, nmlCap: "RM 100,000", reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('ilp', sa, isGspc) };
+        }
+        if (age >= 56 && age <= 60) {
+          const cap = isGspc ? 500000 : 300000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within Non-Medical Limit (NML)!", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 400000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ECG", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 500000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ECG, GE2", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 1000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ECG, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 2000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, TMX, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('ilp', sa, isGspc) };
+        }
+        if (age >= 51 && age <= 55) {
+          const cap = isGspc ? 1000000 : 500000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within Non-Medical Limit (NML)!", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 2000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ECG, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('ilp', sa, isGspc) };
+        }
+        if (age >= 46 && age <= 50) {
+          const cap = isGspc ? 1200000 : 1000000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within Non-Medical Limit (NML)!", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 2000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ECG, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('ilp', sa, isGspc) };
+        }
+        if (age >= 17 && age <= 45) {
+          const cap = isGspc ? 1500000 : 1000000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within Non-Medical Limit (NML)!", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 2000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: age <= 30 ? "Triggers: ME, GE5" : "Triggers: ME, ECG, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 4000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, ECG, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          if (sa <= 5000000 && age <= 40) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, ECG, GE5", finText: getFinReq('ilp', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('ilp', sa, isGspc) };
+        }
+        // Juvenile 14d - 16
+        const cap = isGspc ? 1300000 : 800000;
+        if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within Non-Medical Limit (NML)!", finText: getFinReq('ilp', sa, isGspc) };
+        if (sa <= 1000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME", finText: getFinReq('ilp', sa, isGspc) };
+        if (sa <= 3000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME & ADS", finText: getFinReq('ilp', sa, isGspc) };
+        return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: Individual Consideration (IC)", finText: getFinReq('ilp', sa, isGspc) };
+      }
+
+      if (plan === 'spm') {
+        if (age <= 16) {
+          const cap = isGspc ? 2000000 : 1500000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within SPM/SPS NML!", finText: getFinReq('spm', sa, isGspc) };
+          if (sa <= 3000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME", finText: getFinReq('spm', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: Individual Consideration (IC)", finText: getFinReq('spm', sa, isGspc) };
+        }
+        if (age >= 17 && age <= 50) {
+          const cap = isGspc ? 5000000 : 3000000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within SPM/SPS Non-Medical Limit!", finText: getFinReq('spm', sa, isGspc) };
+          if (sa <= 4000000 && !isGspc) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, ECG, GE5", finText: getFinReq('spm', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('spm', sa, isGspc) };
+        }
+        if (age >= 51 && age <= 60) {
+          const cap = isGspc ? 4000000 : 1500000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within SPM/SPS Non-Medical Limit!", finText: getFinReq('spm', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('spm', sa, isGspc) };
+        }
+        if (age >= 61 && age <= 65) {
+          const cap = isGspc ? 1500000 : 1000000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within SPM/SPS Non-Medical Limit!", finText: getFinReq('spm', sa, isGspc) };
+          if (sa <= 2000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, TMX, GE5", finText: getFinReq('spm', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('spm', sa, isGspc) };
+        }
+        // 66-70
+        const cap = isGspc ? 750000 : 500000;
+        if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within SPM/SPS Non-Medical Limit!", finText: getFinReq('spm', sa, isGspc) };
+        if (sa <= 1000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ECG, GE5", finText: getFinReq('spm', sa, isGspc) };
+        if (sa <= 2000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, TMX, GE5", finText: getFinReq('spm', sa, isGspc) };
+        return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('spm', sa, isGspc) };
+      }
+
+      if (plan === 'legacy') {
+        if (age <= 16) {
+          const cap = isGspc ? 2000000 : 1500000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within Legacy Series NML!", finText: getFinReq('legacy', sa, isGspc) };
+          if (sa <= 3000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME", finText: getFinReq('legacy', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: Individual Consideration (IC)", finText: getFinReq('legacy', sa, isGspc) };
+        }
+        if (age >= 17 && age <= 50) {
+          const cap = isGspc ? 4000000 : 3000000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within Legacy Series Non-Medical Limit!", finText: getFinReq('legacy', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('legacy', sa, isGspc) };
+        }
+        if (age >= 51 && age <= 60) {
+          const cap = isGspc ? 3000000 : 1500000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within Legacy Series Non-Medical Limit!", finText: getFinReq('legacy', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('legacy', sa, isGspc) };
+        }
+        if (age >= 61 && age <= 65) {
+          const cap = isGspc ? 1500000 : 1000000;
+          if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within Legacy Series Non-Medical Limit!", finText: getFinReq('legacy', sa, isGspc) };
+          if (sa <= 2000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, TMX, GE5", finText: getFinReq('legacy', sa, isGspc) };
+          return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('legacy', sa, isGspc) };
+        }
+        // 66-70
+        const cap = isGspc ? 750000 : 500000;
+        if (sa <= cap) return { withinNML: true, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Within Legacy Series Non-Medical Limit!", finText: getFinReq('legacy', sa, isGspc) };
+        if (sa <= 1000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ECG, GE5", finText: getFinReq('legacy', sa, isGspc) };
+        if (sa <= 2000000) return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, TMX, GE5", finText: getFinReq('legacy', sa, isGspc) };
+        return { withinNML: false, nmlCap: `RM ${cap.toLocaleString()}`, reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('legacy', sa, isGspc) };
+      }
+
+      // Prestige Series (Page 16)
+      if (age <= 16) {
+        if (sa <= 1500000) return { withinNML: true, nmlCap: "RM 1,500,000", reqText: "Within Prestige Series NML!", finText: getFinReq('prestige', sa, isGspc) };
+        if (sa <= 3000000) return { withinNML: false, nmlCap: "RM 1,500,000", reqText: "Triggers: ME", finText: getFinReq('prestige', sa, isGspc) };
+        return { withinNML: false, nmlCap: "RM 1,500,000", reqText: "Triggers: Individual Consideration (IC)", finText: getFinReq('prestige', sa, isGspc) };
+      }
+      if (age >= 17 && age <= 40) {
+        if (sa <= 12000000) return { withinNML: true, nmlCap: "RM 12,000,000", reqText: "Within Prestige Series Non-Medical Limit (up to RM12M)!", finText: getFinReq('prestige', sa, isGspc) };
+        return { withinNML: false, nmlCap: "RM 12,000,000", reqText: "Triggers: ME, ADS, TMX, GE5*", finText: getFinReq('prestige', sa, isGspc) };
+      }
+      if (age >= 41 && age <= 50) {
+        if (sa <= 4000000) return { withinNML: true, nmlCap: "RM 4,000,000", reqText: "Within Prestige Series Non-Medical Limit!", finText: getFinReq('prestige', sa, isGspc) };
+        return { withinNML: false, nmlCap: "RM 4,000,000", reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('prestige', sa, isGspc) };
+      }
+      if (age >= 51 && age <= 60) {
+        if (sa <= 3000000) return { withinNML: true, nmlCap: "RM 3,000,000", reqText: "Within Prestige Series Non-Medical Limit!", finText: getFinReq('prestige', sa, isGspc) };
+        return { withinNML: false, nmlCap: "RM 3,000,000", reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('prestige', sa, isGspc) };
+      }
+      if (age >= 61 && age <= 65) {
+        if (sa <= 1000000) return { withinNML: true, nmlCap: "RM 1,000,000", reqText: "Within Prestige Series Non-Medical Limit!", finText: getFinReq('prestige', sa, isGspc) };
+        if (sa <= 1500000) return { withinNML: false, nmlCap: "RM 1,000,000", reqText: "Triggers: ME, ECG, GE5", finText: getFinReq('prestige', sa, isGspc) };
+        if (sa <= 2000000) return { withinNML: false, nmlCap: "RM 1,000,000", reqText: "Triggers: ME, TMX, GE5", finText: getFinReq('prestige', sa, isGspc) };
+        return { withinNML: false, nmlCap: "RM 1,000,000", reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('prestige', sa, isGspc) };
+      }
+      if (age >= 66 && age <= 70) {
+        if (sa <= 1000000) return { withinNML: false, nmlCap: "RM 0 (ME Required)", reqText: "Triggers: ME, ECG, GE5", finText: getFinReq('prestige', sa, isGspc) };
+        if (sa <= 1500000) return { withinNML: false, nmlCap: "RM 0", reqText: "Triggers: ME, ECG, GE5", finText: getFinReq('prestige', sa, isGspc) };
+        if (sa <= 2000000) return { withinNML: false, nmlCap: "RM 0", reqText: "Triggers: ME, TMX, GE5", finText: getFinReq('prestige', sa, isGspc) };
+        return { withinNML: false, nmlCap: "RM 0", reqText: "Triggers: ME, ADS, TMX, GE5", finText: getFinReq('prestige', sa, isGspc) };
+      }
+      if (age >= 71 && age <= 75) {
+        if (sa <= 1500000) return { withinNML: false, nmlCap: "RM 0", reqText: "Triggers: ME, ECG, GE5 (F) or GE16 (M)", finText: getFinReq('prestige', sa, isGspc) };
+        if (sa <= 3000000) return { withinNML: false, nmlCap: "RM 0", reqText: "Triggers: ME, ECG, ADS, GE17 (F) or GE18 (M)", finText: getFinReq('prestige', sa, isGspc) };
+        return { withinNML: false, nmlCap: "RM 0", reqText: "Triggers: Individual Consideration (IC)", finText: getFinReq('prestige', sa, isGspc) };
+      }
+      // 76-80
+      if (sa <= 1500000) return { withinNML: false, nmlCap: "RM 0", reqText: "Triggers: ME, ECG, ADS, GE5 (F) or GE16 (M)", finText: getFinReq('prestige', sa, isGspc) };
+      if (sa <= 3000000) return { withinNML: false, nmlCap: "RM 0", reqText: "Triggers: ME, ECG, ADS, GE17 (F) or GE18 (M)", finText: getFinReq('prestige', sa, isGspc) };
+      return { withinNML: false, nmlCap: "RM 0", reqText: "Triggers: Individual Consideration (IC)", finText: getFinReq('prestige', sa, isGspc) };
+    }
+
+    function getFinReq(plan, total10YrSA, isGspc) {
+      if (plan === 'ilp') {
+        const thresh = isGspc ? 4000000 : 3000000;
+        const taxThresh = isGspc ? 5000000 : 3000000;
+        if (total10YrSA <= thresh) return `No Financial Evidence required (Up to RM${(thresh/1000000).toFixed(0)}M).`;
+        if (total10YrSA <= taxThresh) return "Requires: Financial Questionnaire (Part II) by Life-to-be Assured.";
+        return "Requires: Financial Questionnaire (Part II) + Copy of Income Tax Return (B/BE) for past 2 years.";
+      }
+      // SPM, Legacy, Prestige
+      const thresh = isGspc ? 6000000 : 4000000;
+      const taxThresh = isGspc ? 7000000 : 6000000;
+      if (total10YrSA <= thresh) return `No Financial Evidence required (Up to RM${(thresh/1000000).toFixed(0)}M).`;
+      if (total10YrSA <= taxThresh) return "Requires: Financial Questionnaire (Part II) by Life-to-be Assured.";
+      return "Requires: Financial Questionnaire (Part II) + Copy of Income Tax Return (B/BE) for past 2 years.";
+    }
+
+    function runTriage() {
+      const age = parseInt(document.getElementById('triage-age').value) || 35;
+      const incomeGroup = document.getElementById('triage-income-group').value;
+      const height = parseFloat(document.getElementById('triage-height').value) || 170;
+      const weight = parseFloat(document.getElementById('triage-weight').value) || 70;
+      const condKey = document.getElementById('triage-condition').value;
+      const plan = document.getElementById('triage-plan').value;
+      const sa = parseFloat(document.getElementById('triage-sa').value) || 300000;
+      const isGspc = document.getElementById('triage-gspc').checked;
+
+      // Update Age Band Hint
+      document.getElementById('age-band-hint').textContent = `Band: ${getAgeBand(age)} ANB`;
+
+      // Compute BMI
+      const heightM = height / 100;
+      const bmi = weight / (heightM * heightM);
+      const bmiEval = evaluateBMI(age, bmi);
+
+      const bmiBadge = document.getElementById('bmi-badge');
+      bmiBadge.textContent = bmiEval.status;
+      bmiBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+        bmiEval.color === 'emerald' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+        bmiEval.color === 'amber' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+        bmiEval.color === 'red' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
+        'bg-blue-500/20 text-blue-300 border-blue-500/30'
+      }`;
+      document.getElementById('bmi-rule-text').textContent = bmiEval.req;
+
+      // Evaluate Condition & NML
+      const cond = CONDITION_DATA[condKey];
+      const nml = getNMLRequirement(plan, age, sa, isGspc);
+
+      // Income Group Alerts
+      let incomeAlert = "";
+      if (incomeGroup === 'non_income' && sa > 1000000) {
+        incomeAlert = "⚠️ Housewife/Retiree/Student > RM1,000,000: Spouse/Parents must carry higher coverage and be financially justified (Max RM3M Life/TPD, RM2M DD total).";
+      } else if (incomeGroup === 'non_fixed' && sa > 600000) {
+        incomeAlert = "⚠️ Non-Fixed Income > RM600,000: Spouse must carry higher coverage & be financially justified (Max RM1M total).";
+      } else if (incomeGroup === 'bankrupt') {
+        incomeAlert = "⚠️ Undischarged Bankrupt: Only 3rd-party policy (spouse/company) allowed. Max RM150,000 Life/TPD/DD, H&S max RM400 R&B. Accident & Disability riders DECLINED.";
+      }
+
+      // Override badge if BMI is severe decline
+      let finalColor = bmiEval.severe ? 'red' : cond.badgeColor;
+      let finalLabel = bmiEval.severe ? 'DECLINED RISK (EXTREME BMI)' : cond.tierLabel;
+
+      const colorMap = {
+        emerald: {
+          bg: 'bg-emerald-500/15',
+          border: 'border-emerald-500/40',
+          text: 'text-emerald-300',
+          dot: 'bg-emerald-400'
+        },
+        amber: {
+          bg: 'bg-amber-500/15',
+          border: 'border-amber-500/40',
+          text: 'text-amber-300',
+          dot: 'bg-amber-400'
+        },
+        red: {
+          bg: 'bg-red-500/15',
+          border: 'border-red-500/40',
+          text: 'text-red-300',
+          dot: 'bg-red-400'
+        }
+      };
+      const cStyle = colorMap[finalColor];
+
+      const outputHTML = `
+        <!-- Top Status Banner -->
+        <div class="glass-card rounded-2xl p-5 shadow-xl border-l-4 ${finalColor === 'emerald' ? 'border-l-emerald-500' : finalColor === 'amber' ? 'border-l-amber-500' : 'border-l-red-500'} space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-extrabold tracking-wide ${cStyle.bg} ${cStyle.text} border ${cStyle.border}">
+              <span class="w-2 h-2 rounded-full ${cStyle.dot} animate-pulse"></span>
+              ${finalLabel}
+            </span>
+            <span class="text-xs font-semibold text-slate-400">Report Validity: <strong class="text-white">${condKey === 'clean' ? '1 Year (Standard)' : '6 Months (Substandard)'}</strong></span>
+          </div>
+
+          <h3 class="text-lg font-extrabold text-white">${cond.name}</h3>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">${cond.outcomeSummary}</p>
+
+          ${incomeAlert ? `<div class="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-xs text-amber-200 font-medium">${incomeAlert}</div>` : ''}
+          ${bmi >= 31 && age >= 17 ? `<div class="p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-amber-300 font-medium">📏 Build Impact: ${bmiEval.req}</div>` : ''}
+        </div>
+
+        <!-- Strategy & GMCC Pivot Card -->
+        <div class="glass-card rounded-2xl p-5 shadow-xl space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+              <span class="text-geGold">⚡</span> Recommended Plan Strategy &amp; Speed Pivot
+            </h4>
+            ${cond.gmccEligible ? `<span class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">★ GMCC (0534) Standard Eligible</span>` : ''}
+          </div>
+          <p class="text-xs sm:text-sm text-slate-200 leading-relaxed">${cond.planPivot}</p>
+          <div class="p-3 rounded-xl bg-purple-950/30 border border-purple-500/30 text-xs text-purple-200">
+            <strong>GMCC (0534) Cross-Check:</strong> ${cond.gmccNote}
+          </div>
+        </div>
+
+        <!-- NML & Financial Limit Check Box -->
+        <div class="glass-card rounded-2xl p-5 shadow-xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white">📊 NML &amp; Financial Limit Check (Revised 1 Oct 2026)</h4>
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${nml.withinNML ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">
+              NML Cap: ${nml.nmlCap}
+            </span>
+          </div>
+          <p class="text-xs text-slate-300"><strong>Medical Limit Status:</strong> ${nml.reqText}</p>
+          <p class="text-xs text-slate-400"><strong>Financial Limit Status:</strong> ${nml.finText}</p>
+        </div>
+
+        <!-- Upfront Prep Checklist -->
+        <div class="glass-card rounded-2xl p-5 shadow-xl space-y-3">
+          <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="text-geRed">📋</span> Upfront Submission Checklist (Avoid Pending Loops)
+          </h4>
+          <ul class="space-y-2">
+            ${cond.prepChecklist.map(item => `
+              <li class="flex items-start gap-2.5 text-xs sm:text-sm text-slate-200">
+                <span class="mt-0.5 text-emerald-400 font-bold">✓</span>
+                <span>${item}</span>
+              </li>
+            `).join('')}
+            <li class="flex items-start gap-2.5 text-xs text-amber-300 pt-1 border-t border-slate-800">
+              <span class="font-bold">!</span>
+              <span><strong>Mandatory eSubmission Reminder (Page 105):</strong> Tick <u>YES</u> on "Submission of Hardcopy Documents" whenever attaching medical/lab/HPE reports so HQ KL links them before issuance.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Client Expectation Script -->
+        <div class="bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="space-y-1">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-geGold">💬 Client Expectation Script</span>
+            <p id="client-script-text" class="text-xs sm:text-sm italic text-slate-200">${cond.clientScript}</p>
+          </div>
+          <button onclick="copyScript()" id="copy-script-btn" class="shrink-0 px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-xs font-semibold text-white transition-all">
+            Copy Script
+          </button>
+        </div>
+      `;
+
+      document.getElementById('triage-output-container').innerHTML = outputHTML;
+    }
+
+    function resetTriage() {
+      document.getElementById('triage-age').value = 38;
+      document.getElementById('triage-income-group').value = 'income';
+      document.getElementById('triage-height').value = 170;
+      document.getElementById('triage-weight').value = 70;
+      document.getElementById('triage-condition').value = 'clean';
+      document.getElementById('triage-plan').value = 'ilp';
+      document.getElementById('triage-sa').value = 300000;
+      document.getElementById('triage-gspc').checked = false;
+      runTriage();
+    }
+
+    function copyScript() {
+      const text = document.getElementById('client-script-text').textContent;
+      const temp = document.createElement('textarea');
+      temp.value = text;
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand('copy');
+      document.body.removeChild(temp);
+      const btn = document.getElementById('copy-script-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy Script', 1500);
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. TAB 2: SUBSTANDARD MATRIX DATA & RENDERER
+    // -------------------------------------------------------------------------
+    const MATRIX_ITEMS = [
+      {
+        title: "Asthma (>2 yrs attack-free & off meds)",
+        tier: "green",
+        gmcc: true,
+        outcome: "Standard terms for ALL coverage",
+        prep: "Client Asthma Questionnaire upfront",
+        pivot: "Declare past asthma clearly with >2 yrs attack-free date to avoid unnecessary medical exam."
+      },
+      {
+        title: "Thalassemia Minor / Trait (No anaemia)",
+        tier: "green",
+        gmcc: true,
+        outcome: "Standard terms for ALL coverage",
+        prep: "Hb Electrophoresis / FBC report",
+        pivot: "Attach existing carrier test report upfront for fast Standard issuance."
+      },
+      {
+        title: "Single Kidney Stone (>2 yrs recovered)",
+        tier: "green",
+        gmcc: true,
+        outcome: "Standard terms for ALL coverage",
+        prep: "Follow-up KUB/Ultrasound clearance",
+        pivot: "Single episode >2 yrs ago with stone-free clearance avoids H&S exclusion."
+      },
+      {
+        title: "Post-Op Hernia / Piles / Gallstones / Cataract / Sinusitis",
+        tier: "green",
+        gmcc: true,
+        outcome: "Standard terms (>1 yr post-op & full recovery)",
+        prep: "Discharge summary + HPE biopsy report",
+        pivot: "Ensure HPE confirms benign tissue; >1 yr recovery unlocks Standard H&S."
+      },
+      {
+        title: "Controlled Hypertension (Single impairment)",
+        tier: "green",
+        gmcc: true,
+        outcome: "Standard terms if well-controlled & no other risk factors",
+        prep: "Hypertension Questionnaire + Panel ME + UFEME",
+        pivot: "Single BP med with normal urine/ECG can still pass at Standard rate."
+      },
+      {
+        title: "Mild Uncomplicated Fatty Liver",
+        tier: "green",
+        gmcc: false,
+        outcome: "Standard terms if LFTs & ultrasound normal",
+        prep: "Liver Ultrasound + LFT + GE15 + Hep B/C",
+        pivot: "Attach recent screening ultrasound & normal LFTs upfront."
+      },
+      {
+        title: "Diabetes Mellitus / Abnormal Blood Sugar",
+        tier: "amber",
+        gmcc: true,
+        outcome: "Life/TPD Loaded; DD & H&S Declined",
+        prep: "Doctor Diabetic Questionnaire + ME + GE6 + UFEME",
+        pivot: "★ GMCC (0534) accepts Diabetes at Standard rate! Pair Legacy Life + GMCC."
+      },
+      {
+        title: "Slipped Disc / Backache / Spondylosis / Gout",
+        tier: "amber",
+        gmcc: true,
+        outcome: "Life/DD Standard; H&S/TPD Spine/Joint Exclusion",
+        prep: "Back/Neck Pain Questionnaires + MRI/X-ray",
+        pivot: "★ GMCC (0534) accepts Slipped Disc & Gout at Standard rate!"
+      },
+      {
+        title: "Thyroid Disease / Benign Goitre",
+        tier: "amber",
+        gmcc: false,
+        outcome: "Life/TPD/DD Standard; H&S Thyroid Exclusion",
+        prep: "ME + GE12 (TFT) + HPE/Biopsy (for Goitre)",
+        pivot: "Untreated thyroid is postponed upfront; treated euthyroid gets Standard Life/CI."
+      },
+      {
+        title: "Breast Lump / Fibroid / Ovarian Cyst / PCOS",
+        tier: "amber",
+        gmcc: true,
+        outcome: "Life/TPD/DD Standard; H&S Organ Exclusion",
+        prep: "MANDATORY HPE Biopsy / Ultrasound / Mammogram",
+        pivot: "PCOS & Endometriosis eligible for Standard on GMCC (0534). Never submit lump without biopsy/scan."
+      },
+      {
+        title: "Hepatitis B Carrier (Female vs Male)",
+        tier: "amber",
+        gmcc: false,
+        outcome: "Female: Life/TPD/DD Std, H&S Loaded | Male: Life/TPD Std, DD & H&S Loaded",
+        prep: "GE8 + AFP + Serial LFTs + Liver Ultrasound",
+        pivot: "Submit serial LFTs and normal liver ultrasound upfront to prevent MAR delays."
+      },
+      {
+        title: "Depression / Anxiety (Resolved, Off Meds)",
+        tier: "amber",
+        gmcc: true,
+        outcome: "Life Cover Only (DD, TPD & H&S Declined)",
+        prep: "Mental Health Questionnaire + Psychiatrist MAR + ME",
+        pivot: "★ GMCC (0534) accepts Psychiatric disorders (no substance abuse) at Standard rate!"
+      },
+      {
+        title: "Stroke / Heart Attack (CAD) / TIA (>1 yr stable)",
+        tier: "amber",
+        gmcc: true,
+        outcome: "Life Cover Only (Loaded); DD/TPD/H&S Declined",
+        prep: "Cardiologist/Neurologist MAR + Echo/Angiogram/CT",
+        pivot: "★ GMCC (0534) lists stabilized Stroke/TIA & CAD under Possible Standard Outcome!"
+      },
+      {
+        title: "Stroke / Paralysis / Schizophrenia / Suicide Attempt / SLE (<1 yr)",
+        tier: "red",
+        gmcc: false,
+        outcome: "POSTPONED UPFRONT (Mandatory 1-year wait)",
+        prep: "Hold submission until 12 months post-diagnosis/event",
+        pivot: "Do not submit within 1 year—set calendar reminder for month 13."
+      },
+      {
+        title: "TIA / Heart Attack / CAD / Epilepsy / Pancreatitis / Crohn's / CIN 2-3 (<6 mos)",
+        tier: "red",
+        gmcc: false,
+        outcome: "POSTPONED UPFRONT (Mandatory 6-month wait)",
+        prep: "Hold submission until 6 months post-diagnosis/treatment",
+        pivot: "Mandatory 6-month stability window before underwriting will review."
+      },
+      {
+        title: "Pregnancy ≥32 Weeks (Age ≤16 or ≥46) or Complicated Pregnancy",
+        tier: "red",
+        gmcc: true,
+        outcome: "POSTPONED UPFRONT until post-delivery",
+        prep: "Wait until delivery & postnatal checkup clearance",
+        pivot: "Uncomplicated pregnancies <32 weeks (age 17–45) CAN be approved Standard right now."
+      }
+    ];
+
+    let currentMatrixFilter = 'all';
+
+    function setMatrixFilter(filter) {
+      currentMatrixFilter = filter;
+      document.querySelectorAll('.matrix-filter-btn').forEach(b => {
+        b.classList.remove('ring-2', 'ring-white');
+      });
+      document.getElementById('filter-' + filter).classList.add('ring-2', 'ring-white');
+      renderMatrix();
+    }
+
+    function renderMatrix() {
+      const query = (document.getElementById('matrix-search').value || '').toLowerCase();
+      const filtered = MATRIX_ITEMS.filter(item => {
+        const matchesQuery = item.title.toLowerCase().includes(query) ||
+                             item.outcome.toLowerCase().includes(query) ||
+                             item.pivot.toLowerCase().includes(query) ||
+                             item.prep.toLowerCase().includes(query);
+        if (!matchesQuery) return false;
+        if (currentMatrixFilter === 'all') return true;
+        if (currentMatrixFilter === 'gmcc') return item.gmcc;
+        return item.tier === currentMatrixFilter;
+      });
+
+      const grid = document.getElementById('matrix-grid');
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 text-sm">No matching conditions found. Try another keyword or reset filter.</div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => {
+        const badgeStyle = item.tier === 'green'
+          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+          : item.tier === 'amber'
+          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+          : 'bg-red-500/15 text-red-300 border-red-500/30';
+        const tierText = item.tier === 'green' ? 'GREEN • FAST STANDARD' : item.tier === 'amber' ? 'AMBER • LOAD / EXCLUDE' : 'RED • POSTPONE / DECLINE';
+
+        return `
+          <div class="glass-card rounded-2xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-600 transition-all">
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${badgeStyle}">${tierText}</span>
+                ${item.gmcc ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">★ GMCC Std</span>` : ''}
+              </div>
+              <h3 class="text-sm font-bold text-white leading-snug">${item.title}</h3>
+              <div class="text-xs text-slate-300 bg-slate-900/80 rounded-lg p-2.5 border border-slate-800">
+                <span class="text-slate-400 font-semibold block text-[10px] uppercase">Expected Decision:</span>
+                ${item.outcome}
+              </div>
+            </div>
+            <div class="space-y-2 pt-2 border-t border-slate-800 text-xs">
+              <p class="text-slate-300"><strong class="text-amber-300">Prep:</strong> ${item.prep}</p>
+              <p class="text-slate-400"><strong class="text-white">Pivot:</strong> ${item.pivot}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. TAB 3: NML & FINANCIAL CALCULATOR LOGIC
+    // -------------------------------------------------------------------------
+    function calcNML() {
+      const age = parseInt(document.getElementById('nml-age').value) || 40;
+      const isGspc = document.getElementById('nml-gspc').value === 'gspc';
+      const category = document.getElementById('nml-category').value;
+      const baseSA = parseFloat(document.getElementById('nml-base-sa').value) || 0;
+      const baseMult = parseFloat(document.getElementById('nml-base-mult').value) || 1;
+      const riderSA = parseFloat(document.getElementById('nml-rider-sa').value) || 0;
+      const riderMult = parseFloat(document.getElementById('nml-rider-mult').value) || 1;
+      const existing10Yr = parseFloat(document.getElementById('nml-existing-10yr').value) || 0;
+
+      const calcBase = baseSA * baseMult;
+      const calcRider = riderSA * riderMult;
+      const total1YrNML = calcBase + calcRider;
+      const total10YrFin = existing10Yr + total1YrNML;
+
+      const nmlRes = getNMLRequirement(category, age, total1YrNML, isGspc);
+
+      const card = document.getElementById('nml-result-card');
+      card.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/80 pb-3">
+          <div>
+            <h3 class="text-base font-bold text-white">Aggregated Underwriting Calculation</h3>
+            <p class="text-xs text-slate-400">Age Band: <strong class="text-white">${getAgeBand(age)} ANB</strong> • Status: <strong class="text-amber-300">${isGspc ? 'GSPC Qualifier' : 'Non-GSPC'}</strong></p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-extrabold ${nmlRes.withinNML ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}">
+            ${nmlRes.withinNML ? '✓ WITHIN NML (NO CHECKUP)' : '⚠️ EXCEEDS NML'}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3">
+            <div class="text-[11px] text-slate-400">1-Yr Aggregated NML SA</div>
+            <div class="text-lg font-extrabold text-white mt-0.5">RM ${total1YrNML.toLocaleString()}</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Base: RM ${calcBase.toLocaleString()} + Rider: RM ${calcRider.toLocaleString()}</div>
+          </div>
+          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3">
+            <div class="text-[11px] text-slate-400">Your NML Threshold</div>
+            <div class="text-lg font-extrabold text-emerald-300 mt-0.5">${nmlRes.nmlCap}</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Revised 1 Oct 2026 Table</div>
+          </div>
+          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3">
+            <div class="text-[11px] text-slate-400">10-Yr Financial Total</div>
+            <div class="text-lg font-extrabold text-amber-300 mt-0.5">RM ${total10YrFin.toLocaleString()}</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Includes RM ${existing10Yr.toLocaleString()} existing</div>
+          </div>
+        </div>
+
+        <div class="space-y-2.5 pt-2">
+          <div class="p-3.5 rounded-xl ${nmlRes.withinNML ? 'bg-emerald-950/30 border border-emerald-500/30' : 'bg-amber-950/30 border border-amber-500/30'}">
+            <div class="text-xs font-bold uppercase tracking-wider ${nmlRes.withinNML ? 'text-emerald-300' : 'text-amber-300'}">Medical Underwriting Requirement</div>
+            <p class="text-sm font-semibold text-white mt-1">${nmlRes.reqText}</p>
+            <p class="text-[11px] text-slate-400 mt-1">Legend: ME = Panel Medical Exam | ECG = Resting ECG | TMX = Treadmill ECG | GE2 = UFEME/FBS/HbA1c/BLP/HbsAg | GE5 = GE2 + RFT/LFT+AFP/FBC/HIV | ADS = Attending Doctor's Statement</p>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-300">Financial Underwriting Requirement</div>
+            <p class="text-sm text-slate-200 mt-1">${nmlRes.finText}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. TAB 4: LIVE KAHOOT COMPANION QUIZ (8 QUESTIONS)
+    // -------------------------------------------------------------------------
+    const QUIZ_QUESTIONS = [
+      {
+        q: "Q1. A 42-year-old prospect had a mild Heart Attack (stent inserted) 4 months ago and wants to apply for a Legacy plan today. What happens if you submit right now?",
+        options: [
+          "A. Approved with 100% health loading",
+          "B. Postponed upfront (mandatory 6-month waiting period)",
+          "C. Approved for Medical Card only with cardiac exclusion",
+          "D. Approved at Standard rate on SmartProtect Max"
+        ],
+        answer: 1,
+        explanation: "Per V102026 Page 51, any case of Coronary Artery Disease (CAD), Heart Attack (MI), or Angina within 6 months of diagnosis is POSTPONED UPFRONT. Wait until after month 6, then submit with Cardiologist MAR & Echo/Angiogram for Life-only consideration (or GMCC 0534)."
+      },
+      {
+        q: "Q2. Your client has well-controlled Type 2 Diabetes (HbA1c 6.8%). On a conventional ILP + Medical Card application, what is the BEST-CASE underwriting outcome?",
+        options: [
+          "A. Standard rates across all benefits",
+          "B. Loading on Life/TPD, with Critical Illness (DD) and Medical Card (H&S) Declined",
+          "C. Medical Card approved with diabetes exclusion",
+          "D. Declined upfront for all plans"
+        ],
+        answer: 1,
+        explanation: "Per V102026 Page 57, Diabetes Mellitus Best Case is Loading on Life/TPD with DD and H&S DECLINED. Pro-tip: Pair a Legacy Life plan with Great Multi Cancer Care (0534), which lists Diabetes under Possible Standard Outcome!"
+      },
+      {
+        q: "Q3. A 34-year-old female client had childhood/past asthma, with her last attack 3 years ago and zero inhaler/medication use since. How does Great Eastern underwrite this?",
+        options: [
+          "A. Automatic respiratory exclusion on H&S",
+          "B. 50% loading on Medical Card",
+          "C. Eligible for Standard terms across ALL coverage",
+          "D. Requires mandatory Lung Function Test first"
+        ],
+        answer: 2,
+        explanation: "Per V102026 Page 47, a case of asthma with last attack more than 2 years ago AND currently off treatment/medication may be accepted as STANDARD for all coverage. Just submit the Client Asthma Questionnaire upfront!"
+      },
+      {
+        q: "Q4. A 44-year-old male client (Height 170cm, Weight 118kg -> BMI 40.8) wants a full ILP + Medical Card + CI package. What does the V102026 Build Guideline state?",
+        options: [
+          "A. Approved with 50% loading on all riders",
+          "B. Declined upfront (BMI >= 40)",
+          "C. Only Life coverage can be considered (with ME, GE6 & GE7); TPD/DD/H&S declined",
+          "D. Standard rates if blood pressure is normal"
+        ],
+        answer: 2,
+        explanation: "Per V102026 Page 35, BMI 40–46 requires ME, GE6 & GE7, and ONLY Life coverage can be considered (BMI >= 47 is Declined upfront)."
+      },
+      {
+        q: "Q5. You submit a 38-year-old female client with a benign breast fibroadenoma removed 8 months ago, but you forget to attach the Histopathology (HPE) biopsy report. What happens?",
+        options: [
+          "A. Underwriting approves Life first and pends H&S",
+          "B. Case is postponed upfront until pathological (HPE/biopsy) report is submitted",
+          "C. Approved with a breast exclusion automatically",
+          "D. Converted to Standard rate after 30 days"
+        ],
+        answer: 1,
+        explanation: "Per V102026 Pages 70 & 85, any tumour, cyst, lump, or growth without pathological (HPE/biopsy) or imaging reports and full treatment details is POSTPONED UPFRONT. Always attach HPE + tick YES on Hardcopy Documents!"
+      },
+      {
+        q: "Q6. A 40-year-old non-GSPC client applies for a RM400,000 basic ILP with a RM200,000 Smart Multi Critical Care rider (U822). What is his aggregated Sum Assured for the 1-year NML table?",
+        options: [
+          "A. RM 600,000",
+          "B. RM 400,000",
+          "C. RM 900,000 (still within RM1,000,000 NML!)",
+          "D. RM 1,100,000 (triggers ME, ECG, GE5)"
+        ],
+        answer: 2,
+        explanation: "Per Page 21, Smart Multi Critical Care (U198/U822) carries a 2.5x (250%) multiplier! RM400k + (2.5 x RM200k = RM500k) = RM900,000—which stays just inside the RM1,000,000 NML for age 31–40!"
+      },
+      {
+        q: "Q7. How long are medical examination and laboratory results valid for a SUBSTANDARD applicant vs a STANDARD applicant?",
+        options: [
+          "A. 1 year for both",
+          "B. 6 months for Substandard; 1 year for Standard",
+          "C. 3 months for Substandard; 6 months for Standard",
+          "D. 90 days for both"
+        ],
+        answer: 1,
+        explanation: "Per V102026 Page 12, medical reports and lab results are valid for 1 year for Standard applicants, and 6 months for Substandard applicants."
+      },
+      {
+        q: "Q8. Which of these clients can get STANDARD rates on Great Multi Cancer Care (0534) even though regular medical/CI plans would load, exclude, or decline them?",
+        options: [
+          "A. Unbiopsied breast lump",
+          "B. Controlled Diabetes Mellitus or Slipped Disc",
+          "C. Liver Cirrhosis",
+          "D. Polycystic Kidney Disease (PKD)"
+        ],
+        answer: 1,
+        explanation: "Per the GMCC (0534) Quick Guide, Diabetes Mellitus, Slipped Disc, Hypertension, Asthma, and stabilized Stroke/CAD are all eligible for Possible Standard Outcome, whereas uninvestigated growths, Cirrhosis, and PKD are Declined."
+      }
+    ];
+
+    let currentQIndex = 0;
+    let quizScore = 0;
+    let answeredState = new Array(QUIZ_QUESTIONS.length).fill(null);
+
+    function renderQuiz() {
+      const qObj = QUIZ_QUESTIONS[currentQIndex];
+      const userChoice = answeredState[currentQIndex];
+
+      document.getElementById('quiz-progress-text').textContent = `Question ${currentQIndex + 1} of ${QUIZ_QUESTIONS.length}`;
+      document.getElementById('quiz-score-badge').textContent = `Score: ${quizScore} / ${QUIZ_QUESTIONS.length}`;
+      document.getElementById('btn-prev-q').disabled = currentQIndex === 0;
+      document.getElementById('btn-next-q').textContent = currentQIndex === QUIZ_QUESTIONS.length - 1 ? 'Finish Quiz' : 'Next Question →';
+
+      const optionsHTML = qObj.options.map((opt, idx) => {
+        let btnClass = "bg-slate-900/90 hover:bg-slate-800 border-slate-700 text-slate-200";
+        if (userChoice !== null) {
+          if (idx === qObj.answer) {
+            btnClass = "bg-emerald-500/20 border-emerald-500 text-emerald-200 font-bold";
+          } else if (idx === userChoice) {
+            btnClass = "bg-red-500/20 border-red-500 text-red-200";
+          } else {
+            btnClass = "bg-slate-900/50 border-slate-800 text-slate-500";
+          }
+        }
+        return `
+          <button onclick="selectAnswer(${idx})" ${userChoice !== null ? 'disabled' : ''}
+            class="w-full text-left p-4 rounded-xl border text-xs sm:text-sm transition-all ${btnClass}">
+            ${opt}
+          </button>
+        `;
+      }).join('');
+
+      const explanationHTML = userChoice !== null ? `
+        <div class="p-4 rounded-xl bg-slate-900 border-l-4 ${userChoice === qObj.answer ? 'border-l-emerald-500' : 'border-l-amber-500'} space-y-1">
+          <div class="text-xs font-extrabold uppercase tracking-wider ${userChoice === qObj.answer ? 'text-emerald-400' : 'text-amber-400'}">
+            ${userChoice === qObj.answer ? '✓ Spot On!' : '💡 Underwriting Takeaway'}
+          </div>
+          <p class="text-xs sm:text-sm text-slate-200 leading-relaxed">${qObj.explanation}</p>
+        </div>
+      ` : '';
+
+      document.getElementById('quiz-body').innerHTML = `
+        <h3 class="text-base sm:text-lg font-bold text-white leading-snug">${qObj.q}</h3>
+        <div class="grid grid-cols-1 gap-2.5">${optionsHTML}</div>
+        ${explanationHTML}
+      `;
+    }
+
+    function selectAnswer(idx) {
+      if (answeredState[currentQIndex] !== null) return;
+      answeredState[currentQIndex] = idx;
+      if (idx === QUIZ_QUESTIONS[currentQIndex].answer) {
+        quizScore++;
+      }
+      renderQuiz();
+    }
+
+    function nextQuestion() {
+      if (currentQIndex < QUIZ_QUESTIONS.length - 1) {
+        currentQIndex++;
+        renderQuiz();
+      } else {
+        document.getElementById('quiz-body').innerHTML = `
+          <div class="text-center py-8 space-y-3">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-geGold/20 text-amber-300 text-2xl font-extrabold border border-geGold/40">
+              ${quizScore}/${QUIZ_QUESTIONS.length}
+            </div>
+            <h3 class="text-xl font-extrabold text-white">Session Quiz Complete!</h3>
+            <p class="text-xs sm:text-sm text-slate-300 max-w-md mx-auto">
+              Use the <strong>Case Triage</strong> and <strong>NML Calculator</strong> tabs during your December appointments to verify every substandard case before eSubmission.
+            </p>
+          </div>
+        `;
+      }
+    }
+
+    function prevQuestion() {
+      if (currentQIndex > 0) {
+        currentQIndex--;
+        renderQuiz();
+      }
+    }
+
+    function restartQuiz() {
+      currentQIndex = 0;
+      quizScore = 0;
+      answeredState = new Array(QUIZ_QUESTIONS.length).fill(null);
+      renderQuiz();
+    }
+
+    // Initialize all views on load
+    window.onload = function () {
+      runTriage();
+      setMatrixFilter('all');
+      calcNML();
+      renderQuiz();
+    };
+  </script>
+</body>
+</html>
